@@ -33,8 +33,14 @@ def main() -> int:
     args = ap.parse_args()
     edition = ROOT / args.edition
     image = ROOT / args.image
+    edition_dir = ROOT / "collections" / "_newsletter"
     if not edition.is_file():
         raise RuntimeError(f"missing edition: {edition}")
+    if edition.resolve().parent != edition_dir.resolve():
+        raise RuntimeError(
+            "edition must be stored in collections/_newsletter; "
+            "root-level _newsletter is not a configured Jekyll collection"
+        )
     if not image.is_file():
         raise RuntimeError(f"missing image: {image}")
     date_match = re.match(r"(\d{4}-\d{2}-\d{2})-", edition.name)
@@ -51,6 +57,18 @@ def main() -> int:
             + ", ".join(candidate.name for candidate in duplicates)
         )
     text = edition.read_text(encoding="utf-8")
+    permalink_match = re.search(r"^permalink:\s*(\S+)\s*$", text, re.MULTILINE)
+    if not permalink_match:
+        raise RuntimeError("edition front matter must declare a permalink")
+    permalink = permalink_match.group(1)
+    expected_path = re.sub(r"^https?://[^/]+", "", args.url).rstrip("/") + "/"
+    if permalink != expected_path:
+        raise RuntimeError(
+            f"edition permalink {permalink!r} does not match publication URL {expected_path!r}"
+        )
+    start_here = ROOT / "_data" / "start_here.yml"
+    if not start_here.is_file() or permalink not in start_here.read_text(encoding="utf-8"):
+        raise RuntimeError("_data/start_here.yml must include the edition permalink")
     marker = '<figure class="briefing-image briefing-image--daily">'
     summary = text.find('<div class="briefing-summary">')
     figure = text.find(marker)

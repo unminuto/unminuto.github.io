@@ -1,7 +1,7 @@
 ---
-layout: briefing
-permalink: /newsletter/2026-10-20/
-title: "Germania  in  breve — 2026-10-20"
+layout: newsletter
+permalink: /2026/10/20/briefing-del-20-ottobre/
+title: "Germania,  in  breve:  investimenti,  pensioni  e  Berlino"
 date: 2026-10-20
 summary: "Un vertice sugli investimenti rimette al centro la capacità industriale e digitale della Germania; a Berlino, pensioni, trasporti e coalizioni restano dossier politici aperti."
 sources_count: 23
