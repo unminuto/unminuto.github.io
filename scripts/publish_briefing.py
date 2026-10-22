@@ -24,8 +24,16 @@ def run(*args: str, check: bool = True, cwd: Path = ROOT, capture: bool = True) 
 
 
 def ensure_only_publication_paths(allowed: set[str]) -> None:
+    status = subprocess.run(
+        ("git", "status", "--short", "--untracked-files=all"),
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+    )
+    if status.returncode:
+        raise RuntimeError(f"could not inspect publication changes: {status.stderr}")
     changed = []
-    for line in run("git", "status", "--short", "--untracked-files=all").splitlines():
+    for line in status.stdout.splitlines():
         path = line[3:]
         if path and path not in allowed:
             changed.append(path)
