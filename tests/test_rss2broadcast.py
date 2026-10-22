@@ -8,7 +8,7 @@ FEED = """<?xml version=\"1.0\"?>
 <title>Germania, in breve</title>
 <item><title>Edizione del 28 settembre</title><link>https://example.com/28</link>
 <guid>briefing-28</guid><pubDate>Mon, 28 Sep 2026 05:00:00 GMT</pubDate>
-<description><![CDATA[<p>Il riepilogo del giorno.</p>]]></description></item>
+<description><![CDATA[<div class="briefing-summary"><p>Il riepilogo del giorno.</p></div><article class="briefing-item"><h2>Prima storia</h2></article><article class="briefing-item"><h2>Seconda storia</h2></article>]]></description></item>
 </channel></rss>"""
 
 
@@ -23,6 +23,9 @@ class RSS2BroadcastTests(unittest.TestCase):
         self.assertIn("Il riepilogo del giorno.", payload["content"])
         self.assertEqual(payload["preview_text"], "Il riepilogo del giorno.")
         self.assertIn("https://example.com/28", payload["content"])
+        self.assertIn("Prima storia", payload["content"])
+        self.assertIn("Seconda storia", payload["content"])
+        self.assertEqual(payload["content"].count("https://example.com/28"), 4)
         self.assertTrue(payload["public"])
         self.assertNotIn("subscriber_filter", payload)
 

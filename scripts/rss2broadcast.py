@@ -67,11 +67,23 @@ def _email_summary(content: str) -> str:
     return " ".join(html.unescape(text).split())
 
 
+def _story_titles(content: str) -> list[str]:
+    headings = re.findall(r"<article[^>]*>.*?<h2[^>]*>(.*?)</h2>", content, re.DOTALL)
+    return [" ".join(html.unescape(re.sub(r"<[^>]+>", " ", heading)).split()) for heading in headings]
+
+
 def build_broadcast_payload(item: FeedItem, send_at: str | None = None) -> dict:
     title = html.escape(item.title)
     link = html.escape(item.link, quote=True)
     summary = html.escape(_email_summary(item.content))
-    body = f"<h1>{title}</h1>\n<p>{summary}</p>\n<p><a href=\"{link}\">Leggi l'edizione completa su unminuto.news</a></p>"
+    story_links = "".join(
+        f'<li><a href="{link}">{html.escape(story)}</a></li>' for story in _story_titles(item.content)
+    )
+    stories = f"<h2>In questa edizione</h2><ul>{story_links}</ul>" if story_links else ""
+    body = (
+        f"<h1><a href=\"{link}\">{title}</a></h1>\n<p>{summary}</p>\n{stories}\n"
+        f"<p><a href=\"{link}\">Apri il briefing completo su unminuto.news</a></p>"
+    )
     payload = {
         "subject": item.title,
         "preview_text": _email_summary(item.content),
