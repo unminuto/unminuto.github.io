@@ -77,13 +77,26 @@ def build_broadcast_payload(item: FeedItem, send_at: str | None = None) -> dict:
     link = html.escape(item.link, quote=True)
     summary = html.escape(_email_summary(item.content))
     story_links = "".join(
-        f'<li><a href="{link}">{html.escape(story)}</a></li>' for story in _story_titles(item.content)
+        "<li style=\"padding:12px 0;border-top:1px solid #d6cadf;line-height:1.2;\">"
+        f"<a href=\"{link}\" style=\"color:#21172f;text-decoration:none;font-weight:800;\">{index:02d} — {html.escape(story)}</a>"
+        "</li>"
+        for index, story in enumerate(_story_titles(item.content), start=1)
     )
-    stories = f"<h2>In questa edizione</h2><ul>{story_links}</ul>" if story_links else ""
-    body = (
-        f"<h1><a href=\"{link}\">{title}</a></h1>\n<p>{summary}</p>\n{stories}\n"
-        f"<p><a href=\"{link}\">Apri il briefing completo su unminuto.news</a></p>"
+    stories = (
+        "<h2 style=\"margin:24px 0 8px;color:#6240d5;font:800 13px Arial,sans-serif;"
+        "letter-spacing:.1em;text-transform:uppercase;\">Oggi</h2>"
+        f"<ul style=\"margin:0;padding:0;list-style:none;\">{story_links}</ul>"
+        if story_links
+        else ""
     )
+    body = f'''<div style="margin:0 auto;padding:0;max-width:640px;background:#fff9ff;color:#21172f;font-family:Arial,sans-serif;">
+<div style="padding:22px 28px 18px;border-bottom:6px solid #7c4dff;"><span style="font-size:23px;font-weight:900;letter-spacing:-.07em;text-transform:uppercase;">un minuto</span><br><span style="font-size:11px;font-weight:800;letter-spacing:.12em;">GERMANIA, IN BREVE</span></div>
+<div style="padding:0 28px 30px;"><p style="margin:24px 0 8px;color:#6240d5;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;">BRIEFING QUOTIDIANO</p>
+<h1 style="margin:0;font-size:36px;line-height:1;letter-spacing:-.06em;text-transform:uppercase;"><a href="{link}" style="color:#21172f;text-decoration:none;">{title}</a></h1>
+<div style="margin:18px 0 0;padding:17px;border-left:8px solid #ff4f87;background:#f1e8f5;font:18px/1.45 Georgia,serif;"><strong>TL;DR — </strong>{summary}</div>
+{stories}
+<p style="margin:24px 0 0;"><a href="{link}" style="display:inline-block;background:#7c4dff;color:#ffffff;padding:13px 16px;font-size:13px;font-weight:800;letter-spacing:.04em;text-decoration:none;">APRI IL BRIEFING COMPLETO →</a></p>
+<p style="margin:28px 0 0;padding-top:14px;border-top:1px solid #d6cadf;color:#6f6378;font-size:11px;line-height:1.4;">unminuto.news · Ricevi questo briefing perché sei iscritto.</p></div></div>'''
     payload = {
         "subject": item.title,
         "preview_text": _email_summary(item.content),

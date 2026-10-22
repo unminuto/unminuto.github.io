@@ -271,6 +271,9 @@ body { background:#f7f7f5; color:#202b35; }
 .theme-nord-dark .briefing-issue-header { background:#182c38; border-color:#3f6275; }
 .theme-nord-dark .more-to-know[open] { background:#172d39; border-left-color:#72d5f2; }
 
+.newsletter-issue { max-width:none; margin:0; }
+.archive-briefing .newsletter-cta { max-width:none; }
+
 /* Final Neon Commons contract: F5 impact type with F3 signal stripes. */
 :root { --neon-plum:#251848; --neon-black:#0b0b0d; --neon-violet:#7c4dff; --neon-pink:#ff4f87; --neon-sun:#ffde02; --neon-oat:#f4efea; --neon-ink:#21172f; }
 .theme-nord-dark { --briefing-ink:#fff9ff; --briefing-paper:var(--neon-black); --briefing-blue:#b9a6ff; --briefing-line:#4e3976; --bg:#0b0b0d; --bg-alt:#15111c; --surface:#17111f; --surface-strong:#251848; --border:#4e3976; --text:#d9d0e4; --text-strong:#fff9ff; --muted:#b9a9c9; --link:#c7b9ff; --accent:var(--neon-violet); --accent-warm:var(--neon-pink); }
