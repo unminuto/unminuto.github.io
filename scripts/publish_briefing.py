@@ -95,6 +95,12 @@ def main() -> int:
         str(image.relative_to(ROOT)),
         str(start_here.relative_to(ROOT)),
     })
+    if 'class="source-badge"' in text or 'class="language-badge"' in text or 'class="source-row"' in text:
+        raise RuntimeError("edition uses legacy source markup; use source-line, source-access, and source-lang")
+    if 'class="source-access ' not in text or 'class="source-lang"' not in text:
+        raise RuntimeError("edition must include source-access and source-lang badges for every source")
+    if '<article class="briefing-item">' not in text:
+        raise RuntimeError("edition articles must use the briefing-item content class")
     marker = '<figure class="briefing-image briefing-image--daily">'
     summary = text.find('<div class="briefing-summary">')
     figure = text.find(marker)
