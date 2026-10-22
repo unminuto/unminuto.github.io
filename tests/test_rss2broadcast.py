@@ -21,8 +21,10 @@ class RSS2BroadcastTests(unittest.TestCase):
         self.assertEqual(payload["subject"], "Edizione del 28 settembre")
         self.assertEqual(payload["send_at"], "2026-09-28T07:30:00+02:00")
         self.assertIn("Il riepilogo del giorno.", payload["content"])
+        self.assertEqual(payload["preview_text"], "Il riepilogo del giorno.")
         self.assertIn("https://example.com/28", payload["content"])
-        self.assertFalse(payload["public"])
+        self.assertTrue(payload["public"])
+        self.assertNotIn("subscriber_filter", payload)
 
     def test_select_new_item_ignores_processed_guid(self):
         items = parse_feed(FEED)

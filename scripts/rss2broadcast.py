@@ -6,6 +6,7 @@ import argparse
 import html
 import json
 import os
+import re
 import sys
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -59,17 +60,23 @@ def select_new_item(items: Iterable[FeedItem], processed_guids: set[str]) -> Fee
     return next((item for item in items if item.guid not in processed_guids), None)
 
 
+def _email_summary(content: str) -> str:
+    match = re.search(r'<div class="briefing-summary">\s*<p>(.*?)</p>', content, re.DOTALL)
+    fragment = match.group(1) if match else content
+    text = re.sub(r"<[^>]+>", " ", fragment)
+    return " ".join(html.unescape(text).split())
+
+
 def build_broadcast_payload(item: FeedItem, send_at: str | None = None) -> dict:
     title = html.escape(item.title)
     link = html.escape(item.link, quote=True)
-    content = item.content.strip()
-    body = f"<h1>{title}</h1>\n{content}\n<p><a href=\"{link}\">Leggi l'edizione completa sul sito</a></p>"
+    summary = html.escape(_email_summary(item.content))
+    body = f"<h1>{title}</h1>\n<p>{summary}</p>\n<p><a href=\"{link}\">Leggi l'edizione completa su unminuto.news</a></p>"
     payload = {
         "subject": item.title,
-        "preview_text": item.title,
+        "preview_text": _email_summary(item.content),
         "content": body,
-        "public": False,
-        "subscriber_filter": [{"all": [{"type": "all_subscribers"}]}],
+        "public": True,
     }
     if send_at:
         payload["send_at"] = send_at
@@ -107,7 +114,7 @@ def _save_state(path: Path, guid: str) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Create a Kit broadcast from the latest Jekyll RSS item")
-    parser.add_argument("--feed-url", default=os.environ.get("RSS_FEED_URL", "https://unminuto.github.io/feed.xml"))
+    parser.add_argument("--feed-url", default=os.environ.get("RSS_FEED_URL", "https://unminuto.news/feed.xml"))
     parser.add_argument("--send-at", default=os.environ.get("KIT_SEND_AT"))
     parser.add_argument("--state-file", default=os.environ.get("RSS2BROADCAST_STATE", ".newsletter-state/kit-rss2broadcast.json"))
     parser.add_argument("--dry-run", action="store_true")
