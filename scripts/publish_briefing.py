@@ -23,6 +23,19 @@ def run(*args: str, check: bool = True, cwd: Path = ROOT, capture: bool = True) 
     return (p.stdout or "").strip()
 
 
+def ensure_only_publication_paths(allowed: set[str]) -> None:
+    changed = []
+    for line in run("git", "status", "--short", "--untracked-files=all").splitlines():
+        path = line[3:]
+        if path and path not in allowed:
+            changed.append(path)
+    if changed:
+        raise RuntimeError(
+            "publication may modify only the edition, its image, and _data/start_here.yml; "
+            "template or site files changed: " + ", ".join(changed)
+        )
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--edition", required=True)
@@ -69,6 +82,11 @@ def main() -> int:
     start_here = ROOT / "_data" / "start_here.yml"
     if not start_here.is_file() or permalink not in start_here.read_text(encoding="utf-8"):
         raise RuntimeError("_data/start_here.yml must include the edition permalink")
+    ensure_only_publication_paths({
+        str(edition.relative_to(ROOT)),
+        str(image.relative_to(ROOT)),
+        str(start_here.relative_to(ROOT)),
+    })
     marker = '<figure class="briefing-image briefing-image--daily">'
     summary = text.find('<div class="briefing-summary">')
     figure = text.find(marker)

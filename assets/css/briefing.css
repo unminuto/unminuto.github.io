@@ -236,7 +236,6 @@ body { background:#f7f7f5; color:#202b35; }
 
 /* Source affordances: preserve the F badge and mark free access in acid green. */
 .source-access.free { font-size:.72rem; background:#dfff3f; color:#253300; border-color:#b7d900; }
-.source-access.free::before { content:none; }
 .theme-nord-dark .source-access.free { background:#b7d900; color:#172000; border-color:#dfff3f; }
 
 /* Rhine Window identity: water as a precise, responsive brand mark. */
@@ -538,7 +537,6 @@ body { background:#f7f7f5; color:#202b35; }
 
 /* Final source badge override: the original F icon, now acid green. */
 .source-access.free { font-size:.72rem; background:#dfff3f; color:#253300; border-color:#b7d900; }
-.source-access.free::before { content:none; }
 .theme-nord-light .source-access.free,
 .theme-nord-color .source-access.free { background:#dfff3f; color:#253300; border-color:#b7d900; }
 .theme-nord-dark .source-access.free { background:#b7d900; color:#172000; border-color:#dfff3f; }
