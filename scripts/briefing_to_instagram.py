@@ -160,9 +160,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--edition", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--image-base-url", help="Public base URL corresponding to --output folders")
+    parser.add_argument("--limit", type=int, help="Render and publish only the first N stories (for controlled tests)")
     parser.add_argument("--publish", action="store_true")
     args = parser.parse_args(argv)
     carousels = render(args.edition, args.output)
+    if args.limit is not None:
+        if args.limit < 1:
+            parser.error("--limit must be at least 1")
+        carousels = carousels[:args.limit]
     if args.publish:
         if not args.image_base_url:
             parser.error("--image-base-url is required with --publish")
