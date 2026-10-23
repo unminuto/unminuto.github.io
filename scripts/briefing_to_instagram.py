@@ -47,30 +47,38 @@ def bars(x: int, y: int, width: int, height: int) -> str:
 
 def chrome(step: str, section: str, url: str, *, dark: bool = False) -> str:
     background, foreground, secondary = (PLUM, "#FFF9FF", "#D9D0E4") if dark else (PAPER, INK, MUTED)
-    return f'''<rect width="1080" height="1350" fill="{background}"/>{bars(0, 0, 1080, 14)}
-{text("un minuto", 70, 104, 43, foreground, weight=900, letter_spacing="-3")}{bars(70, 121, 252, 6)}
-{text("GERMANIA, IN BREVE", 70, 178, 18, "#C7B9FF" if dark else VIOLET, weight=900, letter_spacing="2")}
-{text(section.upper(), 70, 232, 17, secondary, weight=800, letter_spacing="1.5")}
-{text(step, 1010, 232, 17, "#C7B9FF" if dark else VIOLET, weight=900, letter_spacing="1.5", anchor="end")}
-<rect x="70" y="1160" width="940" height="1" fill="#4E3976"/>{text(url, 70, 1220, 17, secondary if dark else INK, weight=800, letter_spacing="-.35")}'''
+    return f'''<rect width="1080" height="1080" fill="{background}"/>{bars(0, 0, 1080, 16)}
+{text("un minuto", 64, 94, 46, foreground, weight=900, letter_spacing="-3")}{bars(64, 111, 272, 7)}
+{text("GERMANIA, IN BREVE", 64, 168, 19, "#C7B9FF" if dark else VIOLET, weight=900, letter_spacing="2")}
+{text(section.upper(), 64, 218, 18, secondary, weight=800, letter_spacing="1.5")}
+{text(step, 1016, 218, 18, "#C7B9FF" if dark else VIOLET, weight=900, letter_spacing="1.5", anchor="end")}
+<rect x="64" y="962" width="952" height="1" fill="#4E3976"/>{text(url, 64, 1018, 22, secondary if dark else INK, weight=900, letter_spacing="-.55")}'''
 
 
 def svg(content: str) -> str:
-    return f'<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">{content}</svg>'
+    return f'<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">{content}</svg>'
 
 
 def topic_tags(title: str) -> list[str]:
     low = title.lower()
     tags = ["#Germania", "#NotizieGermania", "#GermaniaInBreve", "#unminuto"]
-    if any(word in low for word in ("qiagen", "investimenti", "fiscali", "auto")):
+    if any(word in low for word in ("energia", "elettricità", "carburant")):
+        tags.extend(["#Energia", "#PoliticaEnergetica"])
+    if any(word in low for word in ("länder", "land")):
+        tags.append("#Laender")
+    if any(word in low for word in ("fiscal", "finanza", "bilancio")):
+        tags.extend(["#FinanzaPubblica", "#Fisco"])
+    if any(word in low for word in ("qiagen", "investimenti", "auto")):
         tags.append("#EconomiaTedesca")
-    elif any(word in low for word in ("php", "sicurezza")):
-        tags.append("#Cybersicurezza")
-    elif "trasporto" in low:
+    if any(word in low for word in ("php", "sicurezza", "digitale", "app")):
+        tags.extend(["#Digitale", "#Cybersicurezza"])
+    if any(word in low for word in ("armi", "estremist")):
+        tags.extend(["#Armi", "#Estremismo"])
+    if "trasporto" in low:
         tags.extend(["#Trasporti", "#Deutschlandticket"])
-    elif "ue" in low:
+    if "ue" in low or "europa" in low:
         tags.append("#Europa")
-    return tags
+    return list(dict.fromkeys(tags))
 
 
 def parse_edition(path: Path) -> tuple[str, list[tuple[str, str]]]:
@@ -86,34 +94,43 @@ def parse_edition(path: Path) -> tuple[str, list[tuple[str, str]]]:
 
 def title_slide(index: int, title: str, body: str, url: str) -> str:
     deck = " ".join(body.split()[:18]) + "…"
-    return svg(chrome("01 / 03", "Briefing quotidiano", url) + f'''{text(f"{index:02d}", 1010, 550, 420, LILAC, weight=900, letter_spacing="-30", anchor="end", opacity=".9")}
-{text(wrap(title.upper(), 15), 70, 400, 82, INK, weight=900, leading=.94, letter_spacing="-4")}
-<rect x="70" y="730" width="760" height="2" fill="{VIOLET}"/>
-{text(wrap(deck, 42), 70, 795, 30, "#4E4358", weight=500, leading=1.34, letter_spacing="-.5")}{bars(70, 960, 940, 10)}''')
+    # Keep the opening hierarchy bold but reserve a protected area for the deck.
+    # Longer headlines receive fewer, wider lines rather than overlapping content.
+    title_size, title_width = 80, 19
+    title_lines = wrap(title.upper(), title_width)
+    while len(title_lines) > 4 and title_size > 64:
+        title_size -= 2
+        title_width += 1
+        title_lines = wrap(title.upper(), title_width)
+    return svg(chrome("01 / 03", "Briefing quotidiano", url, dark=True) + f'''{text(f"{index:02d}", 1016, 555, 385, "#5A4580", weight=900, letter_spacing="-30", anchor="end", opacity=".9")}
+{text(title_lines, 64, 350, title_size, "#FFF9FF", weight=900, leading=.91, letter_spacing="-4.2")}
+<rect x="64" y="680" width="800" height="3" fill="{SUN}"/>
+{text(wrap(deck, 38), 64, 750, 35, "#D9D0E4", weight=500, leading=1.27, letter_spacing="-.65")}{bars(64, 895, 952, 12)}''')
 
 
 def article_slide(title: str, body: str, url: str) -> str:
-    # Scale text down only as needed: every article must fit on this single requested slide.
-    size, width = 29, 45
+    # The reading slide intentionally omits the headline: it has already been read on slide one.
+    # Scale down only as needed while retaining a large, legible default size.
+    size, width = 36, 39
     lines = wrap(body, width)
-    while len(lines) > 16 and size > 18:
+    while len(lines) > 14 and size > 24:
         size -= 1
         width += 3
         lines = wrap(body, width)
-    if len(lines) > 22:
+    if len(lines) > 16:
         raise ValueError(f"article too long for a single Instagram reading slide: {title}")
-    return svg(chrome("02 / 03", "La notizia", url) + f'''{text("02", 1010, 510, 340, LILAC, weight=900, letter_spacing="-25", anchor="end", opacity=".82")}
-{text(wrap(title.upper(), 24), 70, 370, 45, INK, weight=900, leading=.98, letter_spacing="-2")}
-<rect x="70" y="500" width="760" height="2" fill="{PINK}"/>
-{text(lines, 70, 560, size, "#4E4358", weight=500, leading=1.36, letter_spacing="-.35")}{bars(70, 1080, 620, 8)}''')
+    return svg(chrome("02 / 03", "La notizia", url) + f'''{text("02", 1016, 480, 300, LILAC, weight=900, letter_spacing="-25", anchor="end", opacity=".75")}
+<rect x="64" y="285" width="240" height="8" fill="{PINK}"/>
+{text(lines, 64, 365, size, "#4E4358", weight=500, leading=1.30, letter_spacing="-.45")}''')
 
 
 def cta_slide(url: str) -> str:
-    return svg(chrome("03 / 03", "Il briefing quotidiano", url, dark=True) + f'''{text("→", 1010, 540, 330, SUN, weight=900, letter_spacing="-20", anchor="end", opacity=".9")}
-{text(["TUTTE LE NEWS.", "TUTTE LE FONTI."], 70, 405, 74, "#FFF9FF", weight=900, leading=.95, letter_spacing="-4")}
-<rect x="70" y="600" width="760" height="2" fill="#6D5B93"/>
-{text(["Leggi il briefing giornaliero", "e iscriviti alla newsletter."], 70, 680, 36, "#D9D0E4", weight=500, leading=1.32, letter_spacing="-.7")}
-{text("APRI IL SITO  →", 70, 870, 26, SUN, weight=900, letter_spacing=".4")}{bars(70, 970, 760, 10)}''')
+    return svg(chrome("03 / 03", "Il briefing quotidiano", url, dark=True) + f'''{text("→", 1016, 460, 290, SUN, weight=900, letter_spacing="-20", anchor="end", opacity=".9")}
+{text(["TUTTE LE NEWS.", "TUTTE LE FONTI."], 64, 370, 80, "#FFF9FF", weight=900, leading=.93, letter_spacing="-4.5")}
+<rect x="64" y="545" width="800" height="3" fill="#6D5B93"/>
+{text(["Il briefing giornaliero", "con fonti e contesto."], 64, 625, 38, "#D9D0E4", weight=500, leading=1.25, letter_spacing="-.8")}
+{text("unminuto.news", 64, 820, 67, SUN, weight=900, letter_spacing="-3")}
+{text("APRI IL SITO  →", 64, 885, 24, "#FFF9FF", weight=900, letter_spacing="1.2")}{bars(64, 915, 952, 12)}''')
 
 
 def render(edition: Path, output: Path) -> list[dict[str, object]]:
@@ -130,7 +147,7 @@ def render(edition: Path, output: Path) -> list[dict[str, object]]:
         for number, source in enumerate(slides, 1):
             svg_path, png_path = folder / f"{number:02d}.svg", folder / f"{number:02d}.png"
             svg_path.write_text(source, encoding="utf-8")
-            subprocess.run(("rsvg-convert", "-w", "1080", "-h", "1350", str(svg_path), "-o", str(png_path)), check=True)
+            subprocess.run(("rsvg-convert", "-w", "1080", "-h", "1080", str(svg_path), "-o", str(png_path)), check=True)
             pngs.append(png_path)
         caption = f"{title}\n\n{body}\n\nLeggi tutte le notizie, le fonti e il contesto nel briefing giornaliero di un minuto: https://{url}\n\n{' '.join(topic_tags(title))}"
         (folder / "caption.txt").write_text(caption + "\n", encoding="utf-8")
