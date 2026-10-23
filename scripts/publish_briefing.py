@@ -50,7 +50,7 @@ def main() -> int:
     ap.add_argument("--image", required=True)
     ap.add_argument("--url", required=True)
     ap.add_argument("--commit-message", required=True)
-    ap.add_argument("--social-assets", help="Optional rendered Instagram asset directory under assets/social/instagram")
+    ap.add_argument("--social-assets", help="Optional rendered Instagram asset directory under ig")
     ap.add_argument("--check-only", action="store_true")
     args = ap.parse_args()
     edition = ROOT / args.edition
@@ -68,9 +68,9 @@ def main() -> int:
     social_assets = None
     if args.social_assets:
         social_assets = ROOT / args.social_assets
-        social_root = ROOT / "assets" / "social" / "instagram"
+        social_root = ROOT / "ig"
         if not social_assets.is_dir() or social_root.resolve() not in social_assets.resolve().parents:
-            raise RuntimeError("social assets must be a populated directory under assets/social/instagram")
+            raise RuntimeError("social assets must be a populated directory under ig")
     date_match = re.match(r"(\d{4}-\d{2}-\d{2})-", edition.name)
     if not date_match:
         raise RuntimeError(f"edition filename must start with YYYY-MM-DD: {edition.name}")

@@ -153,6 +153,32 @@ def request_json(url: str, data: dict[str, str]) -> dict:
         raise RuntimeError(f"Instagram Graph API {exc.code}: {detail}") from exc
 
 
+def get_json(url: str, token: str) -> dict:
+    request = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            return json.loads(response.read().decode())
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Instagram Graph API {exc.code}: {body}") from exc
+
+
+def wait_for_container(container_id: str, token: str, timeout_seconds: int = 180) -> None:
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        status = get_json(
+            f"{DIRECT_INSTAGRAM_API}/{container_id}?" + urllib.parse.urlencode({"fields": "status_code,status"}),
+            token,
+        )
+        state = status.get("status_code") or status.get("status")
+        if state == "FINISHED":
+            return
+        if state in {"ERROR", "EXPIRED"}:
+            raise RuntimeError(f"Instagram media container {container_id} failed: {status}")
+        time.sleep(2)
+    raise RuntimeError(f"Instagram media container {container_id} was not ready within {timeout_seconds} seconds")
+
+
 def load_credentials(path: Path) -> dict[str, str]:
     if not path.is_file():
         raise RuntimeError(f"missing Instagram credentials file: {path}")
@@ -212,7 +238,9 @@ def publish(carousel: dict[str, object], image_base_url: str, account_id: str, t
         image_url = f"{image_base_url.rstrip('/')}/{folder_name}/{number:02d}.png"
         created = request_json(f"{base}/media", {"image_url": image_url, "is_carousel_item": "true", "access_token": token})
         children.append(created["id"])
+        wait_for_container(created["id"], token)
     parent = request_json(f"{base}/media", {"media_type": "CAROUSEL", "children": ",".join(children), "caption": str(carousel["caption"]), "access_token": token})
+    wait_for_container(parent["id"], token)
     published = request_json(f"{base}/media_publish", {"creation_id": parent["id"], "access_token": token})
     return {"title": carousel["title"], "media_id": published.get("id"), "container_id": parent["id"]}
 
