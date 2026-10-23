@@ -11,6 +11,7 @@ import subprocess
 import sys
 import textwrap
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -138,8 +139,16 @@ def render(edition: Path, output: Path) -> list[dict[str, object]]:
 def request_json(url: str, data: dict[str, str]) -> dict:
     encoded = urllib.parse.urlencode(data).encode()
     request = urllib.request.Request(url, data=encoded, method="POST")
-    with urllib.request.urlopen(request, timeout=60) as response:
-        return json.loads(response.read().decode())
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            return json.loads(response.read().decode())
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        try:
+            detail = json.loads(body).get("error", {}).get("message", body)
+        except json.JSONDecodeError:
+            detail = body
+        raise RuntimeError(f"Instagram Graph API {exc.code}: {detail}") from exc
 
 
 def publish(carousel: dict[str, object], image_base_url: str, account_id: str, token: str) -> dict:
@@ -171,9 +180,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.publish:
         if not args.image_base_url:
             parser.error("--image-base-url is required with --publish")
-        token, account_id = os.environ.get("INSTAGRAM_ACCESS_TOKEN"), os.environ.get("INSTAGRAM_ACCOUNT_ID")
+        token, account_id = os.environ.get("INSTAGRAM_ACCESS_TOKEN"), os.environ.get("INSTAGRAM_BUSINESS_ACCOUNT_ID")
         if not token or not account_id:
-            raise RuntimeError("INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_ACCOUNT_ID are required")
+            raise RuntimeError("INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_BUSINESS_ACCOUNT_ID are required")
         published = [publish(item, args.image_base_url, account_id, token) for item in carousels]
     else:
         published = []
