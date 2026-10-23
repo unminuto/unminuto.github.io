@@ -1,0 +1,7 @@
+Allarme PHP: siti pubblici e privati esposti
+
+Una vulnerabilità critica di PHP sta causando indisponibilità e misure d'emergenza su siti web; Tagesschau , Deutschlandfunk , FAZ e Handelsblatt riportano l'allerta. Per la Germania il punto è operativo: amministrazioni, ospedali e imprese dipendono da infrastrutture web che possono richiedere aggiornamenti e verifiche rapide. Il BSI raccomanda l'installazione tempestiva dell'aggiornamento; l'ampiezza effettiva delle interruzioni resta da quantificare.
+
+Leggi tutte le notizie, le fonti e il contesto nel briefing giornaliero di un minuto: https://unminuto.news/2026/10/22/briefing-del-22-ottobre/
+
+#Germania #NotizieGermania #GermaniaInBreve #unminuto #Cybersicurezza
