@@ -18,6 +18,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 VISIBLE_SITE = "unminuto.news"
+DIRECT_INSTAGRAM_API = "https://graph.instagram.com/v24.0"
+DEFAULT_CREDENTIALS = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")) / "secrets" / "unminuto-instagram.env"
 PAPER, INK, PLUM, VIOLET, PINK, SUN, LILAC, MUTED, LINE = (
     "#F4EFEA", "#21172F", "#251848", "#7C4DFF", "#FF4F87", "#FFDE02", "#F1E8F5", "#6F6378", "#D6CADF"
 )
@@ -151,8 +153,59 @@ def request_json(url: str, data: dict[str, str]) -> dict:
         raise RuntimeError(f"Instagram Graph API {exc.code}: {detail}") from exc
 
 
+def load_credentials(path: Path) -> dict[str, str]:
+    if not path.is_file():
+        raise RuntimeError(f"missing Instagram credentials file: {path}")
+    credentials = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line and not line.startswith("#"):
+            key, value = line.split("=", 1)
+            credentials[key] = value
+    if not credentials.get("INSTAGRAM_ACCESS_TOKEN"):
+        raise RuntimeError(f"INSTAGRAM_ACCESS_TOKEN is missing from {path}")
+    return credentials
+
+
+def direct_account_id(token: str) -> str:
+    request = urllib.request.Request(
+        f"{DIRECT_INSTAGRAM_API}/me?" + urllib.parse.urlencode({"fields": "id,username"}),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            account = json.loads(response.read().decode())
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"could not read the direct Instagram account: {body}") from exc
+    if not account.get("id") or not account.get("username"):
+        raise RuntimeError("Instagram API did not return an account id and username")
+    return str(account["id"])
+
+
+def read_state(path: Path) -> dict[str, dict[str, str]]:
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"invalid Instagram publication state: {path}") from exc
+    return data if isinstance(data, dict) else {}
+
+
+def write_state(path: Path, state: dict[str, dict[str, str]]) -> None:
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(json.dumps(state, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.chmod(temporary, 0o600)
+    temporary.replace(path)
+
+
+def publication_key(carousel: dict[str, object]) -> str:
+    return f"{carousel['url']}\n{carousel['title']}"
+
+
 def publish(carousel: dict[str, object], image_base_url: str, account_id: str, token: str) -> dict:
-    base = f"https://graph.facebook.com/v21.0/{account_id}"
+    base = f"{DIRECT_INSTAGRAM_API}/{account_id}"
     children = []
     folder_name = Path(str(carousel["folder"])).name
     for number in range(1, 4):
@@ -171,6 +224,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--image-base-url", help="Public base URL corresponding to --output folders")
     parser.add_argument("--limit", type=int, help="Render and publish only the first N stories (for controlled tests)")
     parser.add_argument("--publish", action="store_true")
+    parser.add_argument("--credentials-file", type=Path, default=DEFAULT_CREDENTIALS)
+    parser.add_argument(
+        "--state-file",
+        type=Path,
+        default=Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")) / "state" / "unminuto-instagram-published.json",
+        help="Local idempotency record used only when publishing",
+    )
     args = parser.parse_args(argv)
     carousels = render(args.edition, args.output)
     if args.limit is not None:
@@ -180,10 +240,19 @@ def main(argv: list[str] | None = None) -> int:
     if args.publish:
         if not args.image_base_url:
             parser.error("--image-base-url is required with --publish")
-        token, account_id = os.environ.get("INSTAGRAM_ACCESS_TOKEN"), os.environ.get("INSTAGRAM_BUSINESS_ACCOUNT_ID")
-        if not token or not account_id:
-            raise RuntimeError("INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_BUSINESS_ACCOUNT_ID are required")
-        published = [publish(item, args.image_base_url, account_id, token) for item in carousels]
+        credentials = load_credentials(args.credentials_file)
+        token = credentials["INSTAGRAM_ACCESS_TOKEN"]
+        account_id = direct_account_id(token)
+        state = read_state(args.state_file)
+        published = []
+        for item in carousels:
+            key = publication_key(item)
+            if key in state:
+                continue
+            result = publish(item, args.image_base_url, account_id, token)
+            published.append(result)
+            state[key] = {"media_id": str(result["media_id"]), "title": str(result["title"])}
+            write_state(args.state_file, state)
     else:
         published = []
     print(json.dumps({"carousels": len(carousels), "slides": len(carousels) * 3, "output": str(args.output), "published": published}, ensure_ascii=False))

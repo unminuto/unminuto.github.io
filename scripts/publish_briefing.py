@@ -50,6 +50,7 @@ def main() -> int:
     ap.add_argument("--image", required=True)
     ap.add_argument("--url", required=True)
     ap.add_argument("--commit-message", required=True)
+    ap.add_argument("--social-assets", help="Optional rendered Instagram asset directory under assets/social/instagram")
     ap.add_argument("--check-only", action="store_true")
     args = ap.parse_args()
     edition = ROOT / args.edition
@@ -64,6 +65,12 @@ def main() -> int:
         )
     if not image.is_file():
         raise RuntimeError(f"missing image: {image}")
+    social_assets = None
+    if args.social_assets:
+        social_assets = ROOT / args.social_assets
+        social_root = ROOT / "assets" / "social" / "instagram"
+        if not social_assets.is_dir() or social_root.resolve() not in social_assets.resolve().parents:
+            raise RuntimeError("social assets must be a populated directory under assets/social/instagram")
     date_match = re.match(r"(\d{4}-\d{2}-\d{2})-", edition.name)
     if not date_match:
         raise RuntimeError(f"edition filename must start with YYYY-MM-DD: {edition.name}")
@@ -90,11 +97,14 @@ def main() -> int:
     start_here = ROOT / "_data" / "start_here.yml"
     if not start_here.is_file() or permalink not in start_here.read_text(encoding="utf-8"):
         raise RuntimeError("_data/start_here.yml must include the edition permalink")
-    ensure_only_publication_paths({
+    allowed = {
         str(edition.relative_to(ROOT)),
         str(image.relative_to(ROOT)),
         str(start_here.relative_to(ROOT)),
-    })
+    }
+    if social_assets:
+        allowed.update(str(item.relative_to(ROOT)) for item in social_assets.rglob("*") if item.is_file())
+    ensure_only_publication_paths(allowed)
     if 'class="source-badge"' in text or 'class="language-badge"' in text or 'class="source-row"' in text:
         raise RuntimeError("edition uses legacy source markup; use source-line, source-access, and source-lang")
     if 'class="source-access ' not in text or 'class="source-lang"' not in text:
@@ -116,7 +126,10 @@ def main() -> int:
     destination = Path("/tmp") / f"prj-news-mattino-cron-build-{int(time.time())}"
     run("bundle", "exec", "jekyll", "build", "--trace", "--destination", str(destination))
     run("git", "diff", "--check")
-    run("git", "add", args.edition, args.image, "_data/start_here.yml")
+    stage = ["git", "add", args.edition, args.image, "_data/start_here.yml"]
+    if social_assets:
+        stage.append(args.social_assets)
+    run(*stage)
     status = run("git", "status", "--short")
     if not status:
         raise RuntimeError("nothing staged for publication")
