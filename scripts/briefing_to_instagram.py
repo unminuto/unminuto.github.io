@@ -11,6 +11,7 @@ import subprocess
 import sys
 import textwrap
 import time
+from datetime import UTC, datetime, timedelta
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -209,6 +210,50 @@ def load_credentials(path: Path) -> dict[str, str]:
     return credentials
 
 
+def save_credentials(path: Path, credentials: dict[str, str]) -> None:
+    """Atomically persist a refreshed access token without exposing it in logs."""
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(
+        "# Managed locally. Never commit or paste these values into chat.\n"
+        + "".join(f"{key}={value}\n" for key, value in credentials.items()),
+        encoding="utf-8",
+    )
+    os.chmod(temporary, 0o600)
+    temporary.replace(path)
+
+
+def refresh_access_token(credentials_path: Path, credentials: dict[str, str]) -> dict[str, str]:
+    """Refresh a valid long-lived Instagram token before each daily publish.
+
+    Meta permits refreshes after 24 hours and resets the token lifetime to 60
+    days. An already expired or revoked token cannot be recovered here and
+    requires the one-time Business Login flow again.
+    """
+    token = credentials["INSTAGRAM_ACCESS_TOKEN"]
+    endpoint = DIRECT_INSTAGRAM_API.rsplit("/v", 1)[0] + "/refresh_access_token"
+    url = endpoint + "?" + urllib.parse.urlencode({"grant_type": "ig_refresh_token", "access_token": token})
+    request = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            refreshed = json.loads(response.read().decode())
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(
+            "Instagram token refresh failed; it is expired, revoked, or missing the required permission. "
+            "Complete Business Login once to issue a new long-lived token."
+        ) from exc
+    new_token = refreshed.get("access_token")
+    if not new_token:
+        raise RuntimeError("Instagram token refresh returned no access token")
+    credentials["INSTAGRAM_ACCESS_TOKEN"] = str(new_token)
+    if refreshed.get("expires_in"):
+        expires_at = datetime.now(UTC) + timedelta(seconds=int(refreshed["expires_in"]))
+        credentials["INSTAGRAM_ACCESS_TOKEN_EXPIRES_AT"] = expires_at.isoformat()
+    save_credentials(credentials_path, credentials)
+    return credentials
+
+
 def direct_account_id(token: str) -> str:
     request = urllib.request.Request(
         f"{DIRECT_INSTAGRAM_API}/me?" + urllib.parse.urlencode({"fields": "id,username"}),
@@ -285,7 +330,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.publish:
         if not args.image_base_url:
             parser.error("--image-base-url is required with --publish")
-        credentials = load_credentials(args.credentials_file)
+        credentials = refresh_access_token(args.credentials_file, load_credentials(args.credentials_file))
         token = credentials["INSTAGRAM_ACCESS_TOKEN"]
         account_id = direct_account_id(token)
         state = read_state(args.state_file)
