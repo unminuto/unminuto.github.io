@@ -1,0 +1,7 @@
+Servizi segreti: una cloud Google per i dati classificati
+
+BND, Bundesamt für Verfassungsschutz e servizio di controspionaggio militare intendono creare una «ND-Cloud» per scambiare elettronicamente informazioni fino al livello «Geheim»; secondo l’inchiesta di Tagesschau , la base tecnica prevista è Google Distributed Cloud in versione isolata dalla rete. I dati dovrebbero restare in Germania e Google non dovrebbe potervi accedere, ma componenti del progetto sono ancora in attesa di autorizzazione BSI e il costo stimato è di almeno 500 milioni di euro. Il punto aperto è se l’architettura e gli aggiornamenti del fornitore statunitense risponderanno davvero all’obiettivo tedesco di sovranità digitale.
+
+Leggi tutte le notizie, le fonti e il contesto nel briefing giornaliero di un minuto: https://unminuto.news/2026/10/26/briefing-del-26-ottobre/
+
+#Germania #NotizieGermania #GermaniaInBreve #unminuto
