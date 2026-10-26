@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sys
+import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -126,6 +127,22 @@ def create_broadcast(payload: dict, api_key: str, api_url: str) -> dict:
         return json.loads(response.read().decode("utf-8"))
 
 
+def validate_api_key(api_key: str, api_url: str) -> None:
+    """Fail before drafting a broadcast when the locally stored Kit key is stale."""
+    account_url = api_url.rsplit("/broadcasts", 1)[0] + "/account"
+    request = urllib.request.Request(account_url, headers={"X-Kit-Api-Key": api_key})
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 401:
+            raise RuntimeError(
+                "Kit API key is invalid or revoked. Create or reset a V4 key in Kit Developer settings, "
+                "then replace KIT_API_KEY in the local secret environment."
+            ) from exc
+        raise
+
+
 def _load_state(path: Path) -> set[str]:
     if not path.exists():
         return set()
@@ -159,7 +176,9 @@ def main(argv: list[str] | None = None) -> int:
     if not api_key:
         print("KIT_API_KEY is required unless --dry-run is used.", file=sys.stderr)
         return 2
-    response = create_broadcast(payload, api_key, os.environ.get("KIT_API_URL", "https://api.kit.com/v4/broadcasts"))
+    api_url = os.environ.get("KIT_API_URL", "https://api.kit.com/v4/broadcasts")
+    validate_api_key(api_key, api_url)
+    response = create_broadcast(payload, api_key, api_url)
     _save_state(Path(args.state_file), item.guid)
     print(json.dumps(response, ensure_ascii=False))
     return 0
